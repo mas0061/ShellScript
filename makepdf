@@ -1,0 +1,73 @@
+#!/bin/sh
+
+if [ $# -ne 2 ]; then
+  echo "Usage: makepdf TeXfile encode"
+  exit
+fi
+
+BASENAME=`basename $1 .tex`
+KANJI=sjis
+MENDEX_KANJI='-S'
+
+PLATEX=platex
+BIBTEX=pbibtex
+MAKEINDEX=mendex
+DVIPDFMX=dvipdfmx
+BB=ebb
+
+if [ $2 = "euc" ]; then
+  KANJI=euc
+  MENDEX_KANJI='-E'
+elif [ $2 = "utf8" ]; then
+  KANJI=utf8
+  MENDEX_KANJI='-U'
+elif [ $2 = "sjis" ]; then
+  KANJI=sjis
+  MENDEX_KANJI='-S'
+fi
+
+for i in  `find . -name '*.png' -or -name '*.jpg' -or -name '*.pdf'`
+do
+  $BB $i
+done
+
+$PLATEX -kanji=$KANJI $1
+if [ $? -eq 1 ] ; then
+  echo "platex 1 ERROR!"
+  exit
+fi
+
+$BIBTEX -kanji=$KANJI $BASENAME
+if [ $? -eq 1 ] ; then
+  echo "pbibtex ERROR!"
+  exit
+fi
+
+$MAKEINDEX $MENDEX_KANJI $BASENAME.idx
+if [ $? -eq 1 ] ; then
+  echo "mendex ERROR!"
+  exit
+fi
+
+$PLATEX -kanji=$KANJI $1
+if [ $? -eq 1 ] ; then
+  echo "platex 2 ERROR!"
+  exit
+fi
+
+$PLATEX -kanji=$KANJI $1
+if [ $? -eq 1 ] ; then
+  echo "platex 3 ERROR!"
+  exit
+fi
+
+$DVIPDFMX $BASENAME
+if [ $? -eq 1 ] ; then
+  echo "dvipdfmx ERROR!"
+  exit
+fi
+
+rm -f $BASENAME.aux $BASENAME.dvi $BASENAME.log $BASENAME.out $BASENAME.toc $BASENAME.idx \
+  $BASENAME.bbl $BASENAME.blg $BASENAME.ilg *.bb *.xbb
+find . -name "*.bb" -exec rm -f {} \;
+find . -name "*.xbb" -exec rm -f {} \;
